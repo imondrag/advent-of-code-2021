@@ -106,7 +106,7 @@ fn main() {
         .filter(|l| unique_lens.contains(l))
         .count();
 
-    let decoded: Vec<Vec<DisplayDigit>> = notes
+    let decoded: Vec<usize> = notes
         .into_iter()
         .map(|(mut signals, out)| {
             signals.sort_unstable_by_key(|s| s.bits.count_ones());
@@ -116,54 +116,28 @@ fn main() {
             let (l069 @ [_, _, _], _l8) = rest.split_array_ref();
 
             // figure decoding
-            let d_cf = *e1;
-            let d_bd = *e4 - *e1;
-            let d_adg = l235
+            let e_adg = l235
                 .iter()
                 .copied()
                 .reduce(std::ops::BitAnd::bitand)
                 .unwrap();
-            let d_abfg = l069
+            let e_abfg = l069
                 .iter()
                 .copied()
                 .reduce(std::ops::BitAnd::bitand)
                 .unwrap();
-            let d_bg = d_abfg - d_adg;
-
-            dbg!(d_cf);
-            dbg!(d_bd);
-            dbg!(d_adg);
-            dbg!(d_abfg);
-            dbg!(d_bg);
-
-            // UNITS
-            let a = *e7 - *e1;
-            let b = d_bd - d_adg;
-            let c = *e7 - a - d_cf;
-            let d = d_bd - b;
-            let f = *e1 - c;
-            let g = d_bg - b;
-            let e = !*e4 - a - g;
-
-            dbg!(a);
-            dbg!(b);
-            dbg!(c);
-            dbg!(d);
-            dbg!(e);
-            dbg!(f);
-            dbg!(g);
-            println!();
 
             // NUMBERS
-            let zero = a | b | c | e | f | g;
+            let zero = e_abfg | !e_adg;
             let one = *e1;
-            let two = a | c | d | e | g;
-            let three = a | c | d | f | g;
+            let two = e_adg | !e_abfg;
+            let three = e_adg | *e1;
             let four = *e4;
-            let five = a | b | d | f | g;
-            let six = a | b | d | e | f | g;
+            let five = e_adg | e_abfg;
+            let six = five | !*e1;
             let seven = *e7;
             let eight = Segments::all();
+            let nine = e_adg | *e4;
 
             // mapping
             let map = HashMap::from([
@@ -176,19 +150,26 @@ fn main() {
                 (six, S::SIX),
                 (seven, S::SEVEN),
                 (eight, S::EIGHT),
+                (nine, S::NINE),
             ]);
 
-            let decoded: Vec<_> = out.into_iter().map(|s| *map.get(&s).unwrap()).collect();
-            decoded.into_iter().map(|s| s.try_into().unwrap()).collect()
+            let decoded: Vec<u8> = out
+                .into_iter()
+                .map(|s| {
+                    let segments = *map.get(&s).unwrap();
+                    segments.try_into().unwrap()
+                })
+                .collect();
+
+            decoded
+                .into_iter()
+                .rev()
+                .enumerate()
+                .map(|(i, digit)| digit as usize * 10usize.pow(i as u32))
+                .sum()
         })
         .collect();
 
     println!("Day 8.1: {}", easy_output);
-    println!(
-        "Day 8.2: {}",
-        decoded
-            .into_iter()
-            .flat_map(|v| v.into_iter())
-            .fold(0, |acc, n| acc + n as usize)
-    );
+    println!("Day 8.2: {}", decoded.into_iter().sum::<usize>());
 }
