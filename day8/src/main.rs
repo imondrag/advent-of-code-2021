@@ -3,7 +3,6 @@ use std::collections::HashMap;
 
 use bitflags::bitflags;
 
-type DisplayDigit = u8;
 type S = Segments;
 bitflags! {
     struct Segments: u8 {
@@ -26,21 +25,6 @@ bitflags! {
         const SEVEN = 0b0100101;
         const EIGHT = 0b1111111;
         const NINE = 0b1101111;
-
-        // const AND_069 = S::ZERO.bits | S::SIX.bits | S::NINE.bits;
-        // const AND_235 = S::TWO.bits | S::THREE.bits | S::FIVE.bits;
-
-        // const ZERO = 0b1110111;
-        // const SIX =  0b1111011;
-        // const NINE = 0b1101111;
-        // and          0b1100011 = AB FG
-        // xor          0b1100011 = AB FG
-
-        // const TWO =   0b1011101;
-        // const THREE = 0b1101101;
-        // const FIVE =  0b1101011;
-        // and           0b1001001 = A D G
-        // xor           0b1011011 = AB DE G
     }
 }
 
@@ -48,33 +32,13 @@ impl std::str::FromStr for Segments {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let bitmap = s
+        let bits = s
             .bytes()
             .map(|c| 1u8 << (c - b'a'))
             .reduce(std::ops::BitOr::bitor)
             .ok_or("Could not reduce-or bits")?;
 
-        Segments::from_bits(bitmap).ok_or("Invalid input")
-    }
-}
-
-impl TryFrom<Segments> for DisplayDigit {
-    type Error = &'static str;
-
-    fn try_from(set: Segments) -> Result<Self, Self::Error> {
-        match set {
-            S::ZERO => Ok(0),
-            S::ONE => Ok(1),
-            S::TWO => Ok(2),
-            S::THREE => Ok(3),
-            S::FOUR => Ok(4),
-            S::FIVE => Ok(5),
-            S::SIX => Ok(6),
-            S::SEVEN => Ok(7),
-            S::EIGHT => Ok(8),
-            S::NINE => Ok(9),
-            _ => Err("Not displayable digit"),
-        }
+        Segments::from_bits(bits).ok_or("Invalid input")
     }
 }
 
@@ -110,7 +74,6 @@ fn main() {
         .into_iter()
         .map(|(mut signals, out)| {
             signals.sort_unstable_by_key(|s| s.bits.count_ones());
-            dbg!(&signals);
             let ([e1, e7, e4], rest) = signals.split_array_ref();
             let (l235 @ [_, _, _], rest) = rest.split_array_ref();
             let (l069 @ [_, _, _], _l8) = rest.split_array_ref();
@@ -141,31 +104,28 @@ fn main() {
 
             // mapping
             let map = HashMap::from([
-                (zero, S::ZERO),
-                (one, S::ONE),
-                (two, S::TWO),
-                (three, S::THREE),
-                (four, S::FOUR),
-                (five, S::FIVE),
-                (six, S::SIX),
-                (seven, S::SEVEN),
-                (eight, S::EIGHT),
-                (nine, S::NINE),
+                (zero, 0),
+                (one, 1),
+                (two, 2),
+                (three, 3),
+                (four, 4),
+                (five, 5),
+                (six, 6),
+                (seven, 7),
+                (eight, 8),
+                (nine, 9),
             ]);
 
-            let decoded: Vec<u8> = out
+            let decoded_row: Vec<usize> = out
                 .into_iter()
-                .map(|s| {
-                    let segments = *map.get(&s).unwrap();
-                    segments.try_into().unwrap()
-                })
+                .map(|s| map.get(&s).copied().unwrap())
                 .collect();
 
-            decoded
+            decoded_row
                 .into_iter()
                 .rev()
                 .enumerate()
-                .map(|(i, digit)| digit as usize * 10usize.pow(i as u32))
+                .map(|(i, digit)| digit * 10usize.pow(i as u32))
                 .sum()
         })
         .collect();
